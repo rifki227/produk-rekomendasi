@@ -439,7 +439,7 @@ if page == "Overview":
         )
         
         fig2.update_layout(
-            title="Nama Judul Chart Kamu",
+            title="Rating Chart",
             legend=dict(orientation="h", y=1.1, x=0)
         )
         st.plotly_chart(fig2, use_container_width=True)
