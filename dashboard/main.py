@@ -1097,20 +1097,20 @@ elif page == "Tren & Waktu":
         use_container_width=True
     )
     # ── Quarter analysis ──────────────────────────────────────────────────
- section("Analisis per Kuartal", "📊")
- col_qv, col_qr = st.columns(2)
+section("Analisis per Kuartal", "📊")
+col_qv, col_qr = st.columns(2)
 
 # 1. Siapkan data secara kronologis (diurutkan berdasarkan tahun dan kuartal)
- qtr = (
+qtr = (
     df.groupby(["year", "quarter"])
     .agg(count=("rating", "count"), avg=("rating", "mean"))
     .reset_index()
     .sort_values(["year", "quarter"])  # Pastikan urut kronologis
  )
- qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
+qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
 
 # --- KOLOM KIRI: TOTAL VOLUME (COUNT) ---
- with col_qv:
+with col_qv:
     fig_v = go.Figure()
     # Buat satu garis utuh agar tidak terputus
     fig_v.add_trace(go.Scatter(
@@ -1132,7 +1132,7 @@ elif page == "Tren & Waktu":
     st.plotly_chart(fig_v, use_container_width=True)
 
 # --- KOLOM KANAN: RATA-RATA RATING (AVG) ---
- with col_qr:
+with col_qr:
     fig_r = go.Figure()
     # Buat satu garis utuh agar tidak terputus
     fig_r.add_trace(go.Scatter(
