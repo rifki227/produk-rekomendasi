@@ -1098,72 +1098,61 @@ elif page == "Tren & Waktu":
     )
     # ── Quarter analysis ──────────────────────────────────────────────────
     section("Analisis per Kuartal", "📊")
-    col_qv, col_qr = st.columns(2)
+col_qv, col_qr = st.columns(2)
 
-    with col_qv:
-        qtr = (
-            df.groupby(["year","quarter"])
-            .agg(count=("rating","count"), avg=("rating","mean"))
-            .reset_index()
+# 1. Siapkan data secara kronologis (diurutkan berdasarkan tahun dan kuartal)
+qtr = (
+    df.groupby(["year", "quarter"])
+    .agg(count=("rating", "count"), avg=("rating", "mean"))
+    .reset_index()
+    .sort_values(["year", "quarter"])  # Pastikan urut kronologis
+)
+qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
+
+# --- KOLOM KIRI: TOTAL VOLUME (COUNT) ---
+with col_qv:
+    fig_v = go.Figure()
+    # Buat satu garis utuh agar tidak terputus
+    fig_v.add_trace(go.Scatter(
+        x=qtr["label"], 
+        y=qtr["count"],
+        mode="lines+markers",
+        line=dict(color=C["a1"], width=3),  # Gunakan 1 warna utama untuk tren
+        marker=dict(size=8, color=C["a2"]),
+        name="Total Rating"
+    ))
+    
+    fig_v.update_layout(
+        **layout(
+            title="Total Volume Rating per Kuartal",  # Judul diperbaiki
+            xaxis=dict(tickangle=45, gridcolor=C["grid"]),
+            yaxis=dict(gridcolor=C["grid"]),
         )
-        qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
-        fig = go.Figure()
-        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
-            sub = qtr[qtr["quarter"]==q]
-            fig.add_trace(go.Scatter(
-                x=sub["label"], y=sub["count"],
-                name=f"Q{q}", mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-            ))
-        fig.update_layout(
-            **layout(
+    )
+    st.plotly_chart(fig_v, use_container_width=True)
+
+# --- KOLOM KANAN: RATA-RATA RATING (AVG) ---
+with col_qr:
+    fig_r = go.Figure()
+    # Buat satu garis utuh agar tidak terputus
+    fig_r.add_trace(go.Scatter(
+        x=qtr["label"], 
+        y=qtr["avg"].round(3),
+        mode="lines+markers",
+        line=dict(color=C["a3"], width=3),  # Gunakan warna kontras lain
+        marker=dict(size=8, color=C["a4"]),
+        name="Avg Rating"
+    ))
+    
+    fig_r.update_layout(
+        **layout(
             title="Avg Rating per Kuartal",
-            legend=dict(orientation="h", y=1.1),
-            xaxis=dict(
-            tickangle=45,
-            gridcolor=C["grid"]
-            ),
-            yaxis=dict(
-            range=[3.8, 4.8],
-            gridcolor=C["grid"]
-            ),
+            xaxis=dict(tickangle=45, gridcolor=C["grid"]),
+            # Range yaxis disesuaikan otomatis atau berikan ruang logis
+            yaxis=dict(range=[qtr["avg"].min() - 0.2, qtr["avg"].max() + 0.2], gridcolor=C["grid"]),
         )
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col_qr:
-        fig = go.Figure()
-        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
-            sub = qtr[qtr["quarter"]==q]
-            fig.add_trace(go.Scatter(
-                x=sub["label"], y=sub["avg"].round(3),
-                name=f"Q{q}", mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-            ))
-        fig.update_layout(
-            **layout(
-            title="Avg Rating per Kuartal",
-
-            legend=dict(
-            orientation="h",
-            y=1.1
-            ),
-
-            xaxis=dict(
-            tickangle=45,
-            gridcolor=C["grid"]
-            ),
-
-            yaxis=dict(
-            gridcolor=C["grid"]
-            ),
-        )
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-
+    )
+    st.plotly_chart(fig_r, use_container_width=True)
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: MODEL NCF
 # ══════════════════════════════════════════════════════════════════════════════
