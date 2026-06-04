@@ -393,9 +393,11 @@ if page == "Overview":
             hovertemplate="<b>%{x}</b><br>Avg: %{y:.3f}★<extra></extra>",
         ), secondary_y=True)
         fig_yr.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=1.1, x=0),
-            **layout(title="Volume & Rata-rata Rating Tahunan")
+        **layout(
+            title="Volume & Rata-rata Rating Tahunan",
+            legend=dict(orientation="h", yanchor="bottom", y=1.1, x=0)
         )
+    )
         fig_yr.update_yaxes(title_text="Ulasan", secondary_y=False, gridcolor=C["grid"])
         fig_yr.update_yaxes(title_text="Rating", secondary_y=True, range=[3.5, 5.0], gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_yr, use_container_width=True, key="yearly_overview_chart")
