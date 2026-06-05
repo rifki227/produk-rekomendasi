@@ -1097,71 +1097,51 @@ elif page == "Tren & Waktu":
         use_container_width=True
     )
     # ── Quarter analysis ──────────────────────────────────────────────────
-    section("Analisis per Kuartal", "📊")
-    col_qv, col_qr = st.columns(2)
+   section("Analisis per Kuartal", "📊")
+col_qv, col_qr = st.columns(2)
 
-    with col_qv:
-        qtr = (
-            df.groupby(["year","quarter"])
-            .agg(count=("rating","count"), avg=("rating","mean"))
-            .reset_index()
-        )
-        qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
-        fig = go.Figure()
-        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
-            sub = qtr[qtr["quarter"]==q]
-            fig.add_trace(go.Scatter(
-                x=sub["label"], y=sub["count"],
-                name=f"Q{q}", mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-            ))
-        fig.update_layout(
-            **layout(
-            title="Avg Rating per Kuartal",
-            legend=dict(orientation="h", y=1.1),
-            xaxis=dict(
-            tickangle=45,
-            gridcolor=C["grid"]
-            ),
-            yaxis=dict(
-            range=[3.8, 4.8],
-            gridcolor=C["grid"]
-            ),
-        )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+with col_qv:
+    qtr = (
+        df.groupby(["year", "quarter"])
+        .agg(count=("rating", "count"), avg=("rating", "mean"))
+        .reset_index()
+    )
+    qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
+    
+    fig = go.Figure()
+    for q, color in zip([1, 2, 3, 4], [C["a1"], C["a2"], C["a3"], C["a4"]]):
+        sub = qtr[qtr["quarter"] == q]
+        fig.add_trace(go.Scatter(
+            x=sub["label"], y=sub["count"],
+            name=f"Q{q}", mode="lines+markers",
+            line=dict(color=color, width=2),
+            marker=dict(size=6, color=color),
+        ))
+    fig.update_layout(**layout(
+        title="Jumlah Review per Kuartal",
+        legend=dict(orientation="h", y=1.1),
+        xaxis=dict(tickangle=45, gridcolor=C["grid"]),
+        yaxis=dict(range=[3.8, 4.8], gridcolor=C["grid"]),
+    ))
+    st.plotly_chart(fig, use_container_width=True)
 
-    with col_qr:
-        fig = go.Figure()
-        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
-            sub = qtr[qtr["quarter"]==q]
-            fig.add_trace(go.Scatter(
-                x=sub["label"], y=sub["avg"].round(3),
-                name=f"Q{q}", mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-            ))
-        fig.update_layout(
-            **layout(
-            title="Avg Rating per Kuartal",
-
-            legend=dict(
-            orientation="h",
-            y=1.1
-            ),
-
-            xaxis=dict(
-            tickangle=45,
-            gridcolor=C["grid"]
-            ),
-
-            yaxis=dict(
-            gridcolor=C["grid"]
-            ),
-        )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+with col_qr:
+    fig = go.Figure()
+    for q, color in zip([1, 2, 3, 4], [C["a1"], C["a2"], C["a3"], C["a4"]]):
+        sub = qtr[qtr["quarter"] == q]
+        fig.add_trace(go.Scatter(
+            x=sub["label"], y=sub["avg"].round(3),
+            name=f"Q{q}", mode="lines+markers",
+            line=dict(color=color, width=2),
+            marker=dict(size=6, color=color),
+        ))
+    fig.update_layout(**layout(
+        title="Avg Rating per Kuartal",
+        legend=dict(orientation="h", y=1.1),
+        xaxis=dict(tickangle=45, gridcolor=C["grid"]),
+        yaxis=dict(gridcolor=C["grid"]),
+    ))
+    st.plotly_chart(fig, use_container_width=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
