@@ -176,6 +176,7 @@ h1, h2, h3 { font-family: var(--font-head) !important; color: var(--text) !impor
 </style>
 """, unsafe_allow_html=True)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  THEME CONSTANTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -208,6 +209,7 @@ BASE_LAYOUT = dict(
 def layout(**overrides):
     return {**BASE_LAYOUT, **overrides}
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  DATA LOADING
 # ══════════════════════════════════════════════════════════════════════════════
@@ -234,7 +236,9 @@ def load_data():
     df["rating"]     = df["rating"].astype(float)
     return df
 
+
 df_raw = load_data()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SIDEBAR
@@ -260,6 +264,7 @@ with st.sidebar:
     )
 
     top_n = st.slider("🏆 Top N untuk Ranking", 5, 30, 15)
+
     min_reviews = st.slider("🔎 Min. Reviews per Produk", 1, 50, 5)
 
     st.markdown("---")
@@ -284,6 +289,7 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  APPLY FILTERS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -293,6 +299,7 @@ df   = df_raw[mask].copy()
 if df.empty:
     st.warning("⚠️ Tidak ada data untuk filter yang dipilih.")
     st.stop()
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  HELPERS
@@ -314,6 +321,7 @@ def badge(label: str, value: str, color: str = "#38bdf8"):
 
 def pct_change(a, b):
     return ((b - a) / a * 100) if a else 0
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE HEADER
@@ -345,6 +353,7 @@ st.markdown(
 )
 st.markdown("<hr>", unsafe_allow_html=True)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════
@@ -354,6 +363,7 @@ if page == "Overview":
     avg_r   = df["rating"].mean()
     pct5    = (df["rating"] == 5).mean() * 100
     pct1    = (df["rating"] == 1).mean() * 100
+    sparsity = (1 - len(df) / (df["user_id"].nunique() * df["product_id"].nunique())) * 100
 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("📝 Total Ulasan",     f"{len(df):,}")
@@ -362,6 +372,7 @@ if page == "Overview":
     c4.metric("⭐ Avg Rating",       f"{avg_r:.3f}")
     c5.metric("🟢 Rating 5★",        f"{pct5:.1f}%")
     c6.metric("🔴 Rating 1★",        f"{pct1:.1f}%")
+
 
     # ── Row 1: Tren Tahunan + Pie Distribusi ─────────────────────────────────
     section("Tren & Distribusi Rating", "📈")
@@ -373,8 +384,8 @@ if page == "Overview":
             .agg(count=("rating", "count"), avg=("rating", "mean"))
             .reset_index()
         )
-        fig_yr = make_subplots(specs=[[{"secondary_y": True}]])
-        fig_yr.add_trace(go.Bar(
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(go.Bar(
             x=yearly["year"], y=yearly["count"],
             name="Jumlah Ulasan",
             marker=dict(
@@ -384,34 +395,38 @@ if page == "Overview":
             ),
             hovertemplate="<b>%{x}</b><br>%{y:,} ulasan<extra></extra>",
         ), secondary_y=False)
-        fig_yr.add_trace(go.Scatter(
+        fig.add_trace(go.Scatter(
             x=yearly["year"], y=yearly["avg"].round(3),
             name="Avg Rating",
             mode="lines+markers",
             line=dict(color=C["a4"], width=2.5),
-            marker=dict(size=8, color=C["a4"], line=dict(color=C["bg"], width=2)),
+            marker=dict(size=8, color=C["a4"],
+                        line=dict(color=C["bg"], width=2)),
             hovertemplate="<b>%{x}</b><br>Avg: %{y:.3f}★<extra></extra>",
         ), secondary_y=True)
-        fig_yr.update_layout(
-        **layout(
-            title="Volume & Rata-rata Rating Tahunan",
-            legend=dict(orientation="h", yanchor="bottom", y=1.1, x=0)
+        fig.update_layout(
+            legend=dict(
+                orientation="h",
+                yanchor="bottom"
+            )
         )
-    )
-        fig_yr.update_yaxes(title_text="Ulasan", secondary_y=False, gridcolor=C["grid"])
-        fig_yr.update_yaxes(title_text="Rating", secondary_y=True, range=[3.5, 5.0], gridcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_yr, use_container_width=True, key="yearly_overview_chart")
+        fig.update_yaxes(title_text="Ulasan", secondary_y=False, gridcolor=C["grid"])
+        fig.update_yaxes(title_text="Rating", secondary_y=True,
+                         range=[3.5, 5.0], gridcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
 
     with col_r:
         dist = df["rating"].value_counts().sort_index().reset_index()
         dist.columns = ["rating", "count"]
         dist["color"] = dist["rating"].map(RATING_COLORS)
         dist["label"] = dist["rating"].map(lambda x: f"{'★'*int(x)} ({int(x)})")
+        dist["pct"]   = (dist["count"] / dist["count"].sum() * 100).round(1)
 
         fig2 = go.Figure(go.Pie(
             labels=dist["label"], values=dist["count"],
             hole=0.62,
-            marker=dict(colors=dist["color"].tolist(), line=dict(color="#070b14", width=3)),
+            marker=dict(colors=dist["color"].tolist(),
+                        line=dict(color="#070b14", width=3)),
             textinfo="percent",
             textfont=dict(size=12, color="#fff"),
             direction="clockwise",
@@ -422,12 +437,12 @@ if page == "Overview":
             x=0.5, y=0.5, showarrow=False,
             font=dict(size=18, color=C["text"]), align="center",
         )
+        
         fig2.update_layout(
-            title="Proporsi Tingkat Rating",
-            legend=dict(orientation="h", y=1.1, x=0),
-            **layout()
+            title="Nama Judul Chart Kamu",
+            legend=dict(orientation="h", y=1.1, x=0)
         )
-        st.plotly_chart(fig2, use_container_width=True, key="rating_pie_chart")
+        st.plotly_chart(fig2, use_container_width=True)
 
     # ── Row 2: Heatmap Year×Month + Sparsity Card ─────────────────────────
     section("Heatmap Aktivitas", "🗓️")
@@ -452,9 +467,10 @@ if page == "Overview":
             colorbar=dict(title="Ulasan", tickfont=dict(color=C["muted"]), len=0.8),
         ))
         fig4.update_layout(title="Volume Ulasan (Tahun × Bulan)", **layout())
-        st.plotly_chart(fig4, use_container_width=True, key="heatmap_activity_chart")
+        st.plotly_chart(fig4, use_container_width=True)
 
     with col_s:
+        # Stat cards vertikal
         n_u = df["user_id"].nunique()
         n_p = df["product_id"].nunique()
         n_i = len(df)
@@ -486,8 +502,8 @@ if page == "Overview":
     c1, c2, c3, c4 = st.columns(4)
     info = [
         ("Arsitektur", "Neural Collaborative Filtering", C["a1"]),
-        ("Input Users", "13,345", C["a2"]),
-        ("Input Products", "27,447", C["a3"]),
+        ("Input Users", f"13,345", C["a2"]),
+        ("Input Products", f"27,447", C["a3"]),
         ("Output Scale", "0–1 → Invers ke 1–5", C["a4"]),
     ]
     for col, (lbl, val, clr) in zip([c1, c2, c3, c4], info):
@@ -499,6 +515,7 @@ if page == "Overview":
             f"<div style='font-size:15px;font-weight:600;color:{clr}'>{val}</div></div>",
             unsafe_allow_html=True
         )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: PRODUK & ULASAN
@@ -525,56 +542,77 @@ elif page == "Produk & Ulasan":
     c3.metric("⭐ Avg Rating Produk",      f"{prod_stats_filt['avg_rating'].mean():.3f}")
     c4.metric("🏅 Max Ulasan (1 Produk)", f"{int(prod_stats['reviews'].max()):,}")
 
-    # ── Top Products: 3 tabs ─────────────────────────────────────────────────
+    # ── Top Products: 2 tabs ─────────────────────────────────────────────────
     section("Ranking Produk", "🏆")
     tab1, tab2, tab3 = st.tabs(["📊 Terlaris (Volume)", "⭐ Tertinggi (Bayesian)", "🔴 Terendah"])
 
     with tab1:
         top_vol = prod_stats_filt.nlargest(top_n, "reviews")
-        fig_vol = go.Figure(go.Bar(
+
+        fig1 = go.Figure(go.Bar(
             x=top_vol["reviews"],
             y=top_vol["product_id"],
             orientation="h",
-            marker=dict(color=C["a1"]),
-            hovertemplate="<b>ID: %{y}</b><br>Ulasan: %{x:,}<extra></extra>"
         ))
-        fig_vol.update_layout(
-            **layout(title=f"Top {top_n} Produk berdasarkan Volume Ulasan", yaxis=dict(autorange="reversed"))
+
+        fig1.update_layout(
+            **layout(
+                title=f"Top {top_n} Produk berdasarkan Volume Ulasan",
+            )
         )
-        st.plotly_chart(fig_vol, use_container_width=True, key="top_review_chart")
+
+        st.plotly_chart(
+            fig1,
+            use_container_width=True,
+            key="top_review_chart"
+        )
 
     with tab2:
         top_bay = prod_stats_filt.nlargest(top_n, "bayesian")
-        fig_bay = go.Figure(go.Bar(
+
+        fig2 = go.Figure(go.Bar(
             x=top_bay["bayesian"].round(3),
             y=top_bay["product_id"],
             orientation="h",
-            marker=dict(color=C["a3"]),
-            hovertemplate="<b>ID: %{y}</b><br>Bayesian Rating: %{x:.3f}★<extra></extra>"
         ))
-        fig_bay.update_layout(
-            **layout(title=f"Top {top_n} Produk berdasarkan Bayesian Avg Rating", yaxis=dict(autorange="reversed"))
-        )
-        st.plotly_chart(fig_bay, use_container_width=True, key="bayesian_chart")
 
-    with tab3:
-        bot_rat = prod_stats_filt.nsmallest(top_n, "avg_rating")
-        fig_bot = go.Figure(go.Bar(
-            x=bot_rat["avg_rating"].round(3), y=bot_rat["product_id"],
-            orientation="h",
-            marker=dict(color=C["danger"], opacity=0.8),
-            text=bot_rat["avg_rating"].map(lambda x: f"★ {x:.2f}"),
-            textposition="outside", textfont=dict(color=C["text"], size=11),
-            hovertemplate="<b>ID: %{y}</b><br>Avg: %{x:.2f}★<extra></extra>",
-        ))
-        fig_bot.update_layout(
+        fig2.update_layout(
             **layout(
-                title=f"Bottom {top_n} Produk berdasarkan Rating",
-                xaxis=dict(range=[0, 5.5], gridcolor=C["grid"]),
-                yaxis=dict(autorange="reversed", gridcolor="rgba(0,0,0,0)")
+                title=f"Top {top_n} Produk berdasarkan Bayesian Avg Rating",
             )
         )
-        st.plotly_chart(fig_bot, use_container_width=True, key="bottom_rating_chart")
+
+        st.plotly_chart(
+            fig2,
+            use_container_width=True,
+            key="bayesian_chart"
+        )
+    with tab3:
+        bot_rat = prod_stats_filt.nsmallest(top_n, "avg_rating")
+        fig = go.Figure(go.Bar(
+            x=bot_rat["avg_rating"].round(3), y=bot_rat["product_id"],
+            orientation="h",
+            marker=dict(color=C["danger"], opacity=0.8, line=dict(width=0)),
+            text=bot_rat["avg_rating"].map(lambda x: f"★ {x:.2f}"),
+            textposition="outside", textfont=dict(color=C["muted"], size=11),
+            hovertemplate="<b>%{y}</b><br>Avg: %{x:.2f}★<extra></extra>",
+        ))
+    fig.update_layout(
+    **layout(
+        title=f"Bottom {top_n} Produk berdasarkan Rating",
+        height=max(380, top_n * 30),
+        xaxis=dict(
+            range=[0, 4],
+            gridcolor=C["grid"]
+        ),
+        yaxis=dict(
+            autorange="reversed",
+            gridcolor="rgba(0,0,0,0)"
+        ),
+        )
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # ── Scatter: Volume vs Rating ─────────────────────────────────────────
     section("Distribusi Produk", "🔬")
@@ -583,7 +621,7 @@ elif page == "Produk & Ulasan":
     with col_sc:
         scatter_df = prod_stats[prod_stats["reviews"] >= 3].copy()
         scatter_df["size"] = np.sqrt(scatter_df["reviews"]).clip(3, 30)
-        fig_sc = go.Figure(go.Scatter(
+        fig = go.Figure(go.Scatter(
             x=scatter_df["reviews"],
             y=scatter_df["avg_rating"].round(3),
             mode="markers",
@@ -592,33 +630,43 @@ elif page == "Produk & Ulasan":
                 color=scatter_df["avg_rating"],
                 colorscale=[[0, C["danger"]], [0.5, C["a6"]], [1, C["a1"]]],
                 opacity=0.6,
-                colorbar=dict(title="Avg ★", len=0.7, thickness=13, tickfont=dict(color=C["muted"])),
+                colorbar=dict(title="Avg ★", len=0.7, thickness=13,
+                              tickfont=dict(color=C["muted"])),
                 cmin=1, cmax=5,
-                line=dict(width=0),
+                line=dict(color="rgba(0,0,0,0)"),
             ),
             text=scatter_df["product_id"],
             hovertemplate="<b>%{text}</b><br>Ulasan: %{x:,}<br>Avg: %{y:.2f}★<extra></extra>",
         ))
-        fig_sc.update_layout(
+        fig.update_layout(
             **layout(
                 title="Produk: Volume vs Avg Rating (ukuran = volume)",
-                xaxis=dict(title="Jumlah Ulasan", type="log", gridcolor=C["grid"]),
-                yaxis=dict(title="Avg Rating", range=[0.5, 5.5], gridcolor=C["grid"]),
+                margin=dict(l=60, r=20, t=50, b=40),
+                xaxis=dict(
+                title="Jumlah Ulasan",
+                type="log",
+                gridcolor=C["grid"]
+                ),
+                yaxis=dict(
+                title="Avg Rating",
+                range=[0.5, 5.5],
+                gridcolor=C["grid"]
+                ),
             )
         )
-        st.plotly_chart(fig_sc, use_container_width=True, key="scatter_vol_rating")
+    st.plotly_chart(fig, use_container_width=True)
 
     with col_hist:
-        fig_hs = px.histogram(
+        fig = px.histogram(
             prod_stats, x="reviews",
             nbins=50,
             color_discrete_sequence=[C["a2"]],
             labels={"reviews": "Jumlah Ulasan", "count": "Produk"},
             title="Distribusi Jumlah Ulasan per Produk",
         )
-        fig_hs.update_traces(marker_line_width=0, opacity=0.85)
-        fig_hs.update_layout(**layout())
-        st.plotly_chart(fig_hs, use_container_width=True, key="product_reviews_hist")
+        fig.update_traces(marker_line_width=0, opacity=0.85)
+        fig.update_layout(**layout())
+        st.plotly_chart(fig, use_container_width=True)
 
     # ── Data Table ────────────────────────────────────────────────────────
     section("Tabel Produk", "📋")
@@ -631,6 +679,7 @@ elif page == "Produk & Ulasan":
     show_prod = show_prod.reset_index(drop=True)
     show_prod.index = show_prod.index + 1
     st.dataframe(show_prod, use_container_width=True, height=320)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: ANALISIS PENGGUNA
@@ -658,13 +707,14 @@ elif page == "Analisis Pengguna":
     # ── Segmentasi ──────────────────────────────────────────────────────────
     section("Segmentasi Pengguna", "👥")
     col1, col2, col3 = st.columns(3)
+
     seg_colors = [C["danger"], C["a4"], C["a6"], C["a3"], C["a1"], C["a2"]]
 
     with col1:
         seg_count = user_stats["segment"].value_counts().reset_index()
         seg_count.columns = ["segment", "count"]
         seg_count = seg_count.sort_values("segment")
-        fig_seg = go.Figure(go.Pie(
+        fig = go.Figure(go.Pie(
             labels=seg_count["segment"], values=seg_count["count"],
             hole=0.55,
             marker=dict(colors=seg_colors, line=dict(color="#070b14", width=3)),
@@ -672,49 +722,60 @@ elif page == "Analisis Pengguna":
             direction="clockwise",
             hovertemplate="<b>%{label}</b><br>%{value:,} user (%{percent})<extra></extra>",
         ))
-        fig_seg.update_layout(title="Distribusi Segmen", showlegend=False, **layout())
-        st.plotly_chart(fig_seg, use_container_width=True, key="user_segment_pie")
+        fig.update_layout(title="Distribusi Segmen", showlegend=False, **layout())
+        st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         seg_avg = (
             user_stats.groupby("segment", observed=True)["avg"]
             .mean().reset_index().sort_values("segment")
         )
-        fig_savg = go.Figure(go.Bar(
+        fig = go.Figure(go.Bar(
             x=seg_avg["segment"], y=seg_avg["avg"].round(3),
             marker_color=seg_colors,
             text=seg_avg["avg"].round(3),
-            textposition="outside", textfont=dict(color=C["text"]),
+            textposition="outside", textfont=dict(color=C["muted"]),
             hovertemplate="<b>%{x}</b><br>Avg rating: %{y:.3f}<extra></extra>",
         ))
-        fig_savg.update_layout(
+        fig.update_layout(
             **layout(
-                title="Avg Rating per Segmen",
-                yaxis=dict(range=[3.5, 5.0], gridcolor=C["grid"]),
-                xaxis=dict(tickangle=20, gridcolor="rgba(0,0,0,0)"),
-            )
+            title="Avg Rating per Segmen",
+            yaxis=dict(
+            range=[3.5, 5.0],
+            gridcolor=C["grid"]
+            ),
+            xaxis=dict(
+            tickangle=20,
+            gridcolor="rgba(0,0,0,0)"
+            ),
         )
-        st.plotly_chart(fig_savg, use_container_width=True, key="user_segment_avg_rating")
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     with col3:
         seg_vol = (
             user_stats.groupby("segment", observed=True)["reviews"]
             .sum().reset_index().sort_values("segment")
         )
-        fig_svol = go.Figure(go.Bar(
+        fig = go.Figure(go.Bar(
             x=seg_vol["segment"], y=seg_vol["reviews"],
             marker_color=seg_colors, opacity=0.85,
             text=seg_vol["reviews"].map(lambda x: f"{x:,}"),
-            textposition="outside", textfont=dict(color=C["text"]),
+            textposition="outside", textfont=dict(color=C["muted"]),
         ))
-        fig_svol.update_layout(
+        fig.update_layout(
             **layout(
-                title="Total Kontribusi Ulasan per Segmen",
-                yaxis=dict(gridcolor=C["grid"]),
-                xaxis=dict(tickangle=20, gridcolor="rgba(0,0,0,0)"),
-            )
+            title="Total Kontribusi Ulasan per Segmen",
+            yaxis=dict(
+            gridcolor=C["grid"]
+            ),
+            xaxis=dict(
+            tickangle=20,
+            gridcolor="rgba(0,0,0,0)"
+            ),
         )
-        st.plotly_chart(fig_svol, use_container_width=True, key="user_segment_vol")
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     # ── Retensi User ─────────────────────────────────────────────────────────
     section("Retensi & Kohort Pengguna", "🔄")
@@ -723,7 +784,7 @@ elif page == "Analisis Pengguna":
     with col_ret:
         user_years = df_raw.groupby("user_id")["year"].nunique().value_counts().sort_index()
         total_users = user_years.sum()
-        fig_ret = go.Figure(go.Bar(
+        fig = go.Figure(go.Bar(
             x=user_years.index.astype(str),
             y=user_years.values,
             marker=dict(
@@ -732,145 +793,688 @@ elif page == "Analisis Pengguna":
                 line=dict(width=0),
             ),
             text=(user_years.values / total_users * 100).round(1).astype(str) + "%",
-            textposition="outside", textfont=dict(color=C["text"]),
+            textposition="outside", textfont=dict(color=C["muted"]),
             hovertemplate="<b>%{x} tahun aktif</b><br>%{y:,} user<extra></extra>",
         ))
-        fig_ret.update_layout(
+        fig.update_layout(
             **layout(
-                title="Distribusi Tahun Aktif per User",
-                yaxis=dict(gridcolor=C["grid"]),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-            )
+            title="Distribusi Tahun Aktif per User",
+            yaxis=dict(
+            gridcolor=C["grid"]
+            ),
+            xaxis=dict(
+            tickangle=20,
+            gridcolor="rgba(0,0,0,0)"
+            ),
         )
-        st.plotly_chart(fig_ret, use_container_width=True, key="user_retention_chart")
+        )
+    st.plotly_chart(fig, use_container_width=True)
 
     with col_coh:
         cohort = df_raw.groupby("user_id")["timestamp"].min().dt.year.value_counts().sort_index()
-        fig_coh = go.Figure(go.Scatter(
+        fig = go.Figure(go.Scatter(
             x=cohort.index, y=cohort.values,
             mode="lines+markers",
             fill="tozeroy",
-            fillcolor="rgba(129,140,248,.15)",
+            fillcolor=f"rgba(129,140,248,.15)",
             line=dict(color=C["a2"], width=2.5),
             marker=dict(size=8, color=C["a2"], line=dict(color=C["bg"], width=2)),
             hovertemplate="<b>%{x}</b><br>%{y:,} user baru<extra></extra>",
         ))
-        fig_coh.update_layout(
+        fig.update_layout(
             **layout(
-                title="Akuisisi User Baru per Tahun",
-                yaxis=dict(gridcolor=C["grid"]),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)", tickmode="linear"),
-            )
+            title="Akuisisi User Baru per Tahun (Kohort)",
+            yaxis=dict(
+            gridcolor=C["grid"]
+            ),
+            xaxis=dict(
+            tickangle=20,
+            gridcolor="rgba(0,0,0,0)"
+            ),
         )
-        st.plotly_chart(fig_coh, use_container_width=True, key="user_cohort_chart")
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Top Reviewer ──────────────────────────────────────────────────────
+    section(f"Top {top_n} Reviewer Paling Aktif", "🏆")
+    col_tr, col_rb = st.columns([3, 2])
+
+    with col_tr:
+        top_users = user_stats.nlargest(top_n, "reviews")
+        fig = go.Figure(go.Bar(
+            x=top_users["reviews"], y=top_users["user_id"],
+            orientation="h",
+            marker=dict(
+                color=top_users["avg"],
+                colorscale=[[0, C["danger"]], [0.5, C["a6"]], [1, C["a1"]]],
+                colorbar=dict(title="Avg ★", len=0.7, thickness=13,
+                              tickfont=dict(color=C["muted"])),
+                cmin=1, cmax=5, line=dict(width=0),
+            ),
+            text=top_users["reviews"].map(lambda x: f"{x:,}"),
+            textposition="outside", textfont=dict(color=C["muted"], size=11),
+            hovertemplate="<b>%{y}</b><br>%{x:,} ulasan<extra></extra>",
+        ))
+        fig.update_layout(
+            **layout(
+            title=f"Top {top_n} Reviewer",
+            height=max(360, top_n * 30),
+            xaxis=dict(
+            gridcolor=C["grid"]
+            ),
+            yaxis=dict(
+            autorange="reversed",
+            gridcolor="rgba(0,0,0,0)"
+            ),
+        )
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_rb:
+        # Box plot distribusi ulasan
+        fig = go.Figure(go.Box(
+            x=user_stats["reviews"],
+            name="Ulasan/User",
+            marker_color=C["a2"],
+            line_color=C["a1"],
+            boxmean=True,
+            hovertemplate="<b>%{x}</b> ulasan<extra></extra>",
+        ))
+        fig.update_layout(
+            **layout(
+            title="Distribusi Ulasan per User",
+            xaxis=dict(
+            title="Jumlah Ulasan",
+            gridcolor=C["grid"]
+            ),
+            showlegend=False,
+        )
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Percentile stats
+        pcts = [25, 50, 75, 90, 95, 99]
+        vals = np.percentile(user_stats["reviews"], pcts)
+        st.markdown(
+            "<div style='background:#0d1220;border:1px solid #1e2a3f;border-radius:10px;"
+            "padding:14px 18px;margin-top:8px'>"
+            "<div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace;"
+            "text-transform:uppercase;margin-bottom:10px'>Persentil Ulasan/User</div>" +
+            "".join(
+                f"<div style='display:flex;justify-content:space-between;padding:4px 0;"
+                f"border-bottom:1px solid #1e2a3f'>"
+                f"<span style='color:#5a6a8a;font-size:12px'>P{p}</span>"
+                f"<span style='color:#e2e8f7;font-weight:600;font-family:DM Mono,monospace'>{int(v)}</span></div>"
+                for p, v in zip(pcts, vals)
+            ) +
+            "</div>",
+            unsafe_allow_html=True
+        )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: TREN & WAKTU
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Tren & Waktu":
 
-    # Fix Visual Terputus: Satukan dlm single line chronologis temporal
+    # ── Monthly trend ────────────────────────────────────────────────────────
+    section("Tren Bulanan", "📅")
+    monthly = (
+        df.groupby("year_month")
+        .agg(count=("rating","count"), avg=("rating","mean"))
+        .reset_index().sort_values("year_month")
+    )
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Scatter(
+        x=monthly["year_month"], y=monthly["count"],
+        name="Volume", fill="tozeroy",
+        fillcolor=f"rgba(56,189,248,.12)",
+        line=dict(color=C["a1"], width=1.5),
+        mode="lines",
+        hovertemplate="<b>%{x}</b><br>%{y:,} ulasan<extra></extra>",
+    ), secondary_y=False)
+    fig.add_trace(go.Scatter(
+        x=monthly["year_month"], y=monthly["avg"].round(3),
+        name="Avg Rating",
+        line=dict(color=C["a4"], width=2, dash="dot"),
+        mode="lines",
+        hovertemplate="<b>%{x}</b><br>Avg: %{y:.3f}★<extra></extra>",
+    ), secondary_y=True)
+    fig.update_layout(
+        **layout(
+        title="Tren Bulanan: Volume Ulasan & Avg Rating",
+        legend=dict(
+            orientation="h",
+            y=1.1
+        ),
+    )
+    )
+    fig.update_yaxes(title_text="Ulasan", secondary_y=False, gridcolor=C["grid"])
+    fig.update_yaxes(title_text="Avg Rating", secondary_y=True,
+                     range=[3.5, 5.0], gridcolor="rgba(0,0,0,0)")
+    fig.update_xaxes(nticks=24, tickangle=45, gridcolor=C["grid"])
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── Seasonality ──────────────────────────────────────────────────────────
+    section("Pola Musiman", "🌊")
+    col_mon, col_day = st.columns(2)
+
+    with col_mon:
+        mon_agg = (
+            df.groupby("month")
+            .agg(count=("rating","count"), avg=("rating","mean"))
+            .reset_index()
+        )
+        mon_labels = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
+        mon_agg["label"] = mon_agg["month"].apply(lambda x: mon_labels[x-1])
+
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(go.Bar(
+            x=mon_agg["label"], y=mon_agg["count"],
+            name="Volume", marker_color=C["a1"], opacity=0.75,
+        ), secondary_y=False)
+        fig.add_trace(go.Scatter(
+            x=mon_agg["label"], y=mon_agg["avg"].round(3),
+            name="Avg Rating", mode="lines+markers",
+            line=dict(color=C["a4"], width=2.5),
+            marker=dict(size=8, color=C["a4"]),
+        ), secondary_y=True)
+        fig.update_layout(title="Pola Bulanan (Seasonality)", **layout())
+        fig.update_yaxes(secondary_y=False, gridcolor=C["grid"])
+        fig.update_yaxes(secondary_y=True, range=[4.1, 4.4], gridcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_day:
+        day_agg = (
+            df.groupby("dayofweek")
+            .agg(count=("rating","count"), avg=("rating","mean"))
+            .reset_index()
+        )
+        day_labels = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"]
+        day_agg["label"] = day_agg["dayofweek"].apply(lambda x: day_labels[x])
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatterpolar(
+            r=day_agg["count"], theta=day_agg["label"],
+            fill="toself", fillcolor=f"rgba(56,189,248,.15)",
+            line=dict(color=C["a1"], width=2),
+            name="Volume Ulasan",
+        ))
+        fig.update_layout(
+            title="Volume Ulasan per Hari (Radar)",
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(visible=True, gridcolor=C["grid"],
+                                tickcolor=C["muted"], tickfont=dict(size=10)),
+                angularaxis=dict(gridcolor=C["grid"]),
+            ),
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color=C["text"], family="DM Sans"),
+            margin=dict(l=40, r=40, t=50, b=40),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Heatmap Rating per Year×Month ─────────────────────────────────────
+    section("Heatmap Avg Rating (Tahun × Bulan)", "🌡️")
+
+    heat_r = (
+        df.groupby(["year", "month"])["rating"]
+        .mean()
+        .reset_index()
+        .pivot(index="year", columns="month", values="rating")
+        .fillna(3.5)
+    )
+
+    month_labels = [
+        "Jan","Feb","Mar","Apr","Mei","Jun",
+        "Jul","Agu","Sep","Okt","Nov","Des"
+    ]
+
+    cols_p = [c for c in range(1, 13) if c in heat_r.columns]
+
+    fig = go.Figure(
+        go.Heatmap(
+            z=heat_r[cols_p].values.round(3),
+
+            x=[month_labels[c - 1] for c in cols_p],
+
+            y=heat_r.index.astype(str),
+
+            xgap=2,
+            ygap=2,
+
+            colorscale=[
+                [0, C["danger"]],
+                [0.25, C["a4"]],
+                [0.5, C["a6"]],
+                [0.75, C["a3"]],
+                [1.0, C["a1"]],
+            ],
+
+            zmin=3.5,
+            zmax=5.0,
+
+            text=heat_r[cols_p].values.round(2),
+
+            texttemplate="%{text}",
+
+            textfont=dict(
+                size=10
+            ),
+
+            hovertemplate=(
+                "<b>%{y} %{x}</b><br>"
+                "Avg rating: %{z:.3f}<extra></extra>"
+            ),
+
+            colorbar=dict(
+                title="Avg ★",
+                tickfont=dict(
+                    color=C["muted"]
+                )
+            ),
+        )
+    )
+
+    fig.update_layout(
+        **layout(
+            title="Avg Rating per Tahun & Bulan",
+
+            xaxis=dict(
+                side="bottom",
+                gridcolor="rgba(0,0,0,0)"
+            ),
+
+            yaxis=dict(
+                gridcolor="rgba(0,0,0,0)"
+            ),
+        )
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+    # ── Quarter analysis ──────────────────────────────────────────────────
     section("Analisis per Kuartal", "📊")
     col_qv, col_qr = st.columns(2)
 
-    qtr = (
-        df.groupby(["year","quarter"])
-        .agg(count=("rating","count"), avg=("rating","mean"))
-        .reset_index()
-        .sort_values(["year","quarter"])
-    )
-    qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
-
     with col_qv:
-        fig_qv = go.Figure()
-        fig_qv.add_trace(go.Scatter(
-            x=qtr["label"], y=qtr["count"],
-            mode="lines+markers",
-            line=dict(color=C["a1"], width=3),
-            marker=dict(size=7, color=C["a2"]),
-            hovertemplate="<b>%{x}</b><br>Volume: %{y:,}<extra></extra>"
-        ))
-        fig_qv.update_layout(
-            **layout(
-                title="Total Volume Ulasan per Kuartal",
-                xaxis=dict(tickangle=45, gridcolor=C["grid"]),
-                yaxis=dict(gridcolor=C["grid"])
-            )
+        qtr = (
+            df.groupby(["year","quarter"])
+            .agg(count=("rating","count"), avg=("rating","mean"))
+            .reset_index()
         )
-        st.plotly_chart(fig_qv, use_container_width=True, key="quarter_volume_chart")
+        qtr["label"] = qtr["year"].astype(str) + " Q" + qtr["quarter"].astype(str)
+        fig = go.Figure()
+        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
+            sub = qtr[qtr["quarter"]==q]
+            fig.add_trace(go.Scatter(
+                x=sub["label"], y=sub["count"],
+                name=f"Q{q}", mode="lines+markers",
+                line=dict(color=color, width=2),
+                marker=dict(size=6, color=color),
+            ))
+        fig.update_layout(
+            **layout(
+            title="Avg Rating per Kuartal",
+            legend=dict(orientation="h", y=1.1),
+            xaxis=dict(
+            tickangle=45,
+            gridcolor=C["grid"]
+            ),
+            yaxis=dict(
+            range=[3.8, 4.8],
+            gridcolor=C["grid"]
+            ),
+        )
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     with col_qr:
-        fig_qr = go.Figure()
-        fig_qr.add_trace(go.Scatter(
-            x=qtr["label"], y=qtr["avg"].round(3),
-            mode="lines+markers",
-            line=dict(color=C["a3"], width=3),
-            marker=dict(size=7, color=C["a4"]),
-            hovertemplate="<b>%{x}</b><br>Avg Rating: %{y:.3f}★<extra></extra>"
-        ))
-        fig_qr.update_layout(
+        fig = go.Figure()
+        for q, color in zip([1,2,3,4], [C["a1"],C["a2"],C["a3"],C["a4"]]):
+            sub = qtr[qtr["quarter"]==q]
+            fig.add_trace(go.Scatter(
+                x=sub["label"], y=sub["avg"].round(3),
+                name=f"Q{q}", mode="lines+markers",
+                line=dict(color=color, width=2),
+                marker=dict(size=6, color=color),
+            ))
+        fig.update_layout(
             **layout(
-                title="Avg Rating per Kuartal",
-                xaxis=dict(tickangle=45, gridcolor=C["grid"]),
-                yaxis=dict(range=[qtr["avg"].min() - 0.1, qtr["avg"].max() + 0.1], gridcolor=C["grid"])
-            )
+            title="Avg Rating per Kuartal",
+
+            legend=dict(
+            orientation="h",
+            y=1.1
+            ),
+
+            xaxis=dict(
+            tickangle=45,
+            gridcolor=C["grid"]
+            ),
+
+            yaxis=dict(
+            gridcolor=C["grid"]
+            ),
         )
-        st.plotly_chart(fig_qr, use_container_width=True, key="quarter_rating_chart")
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    # ── Seasonality Month & Day ──────────────────────────────────────────────
-    section("Pola Seasonality Musiman", "🍂")
-    col_m, col_d = st.columns(2)
-
-    with col_m:
-        month_order = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
-        monthly_trend = df.groupby("month_name").agg(count=("rating", "count"), avg=("rating", "mean")).reindex(month_order).reset_index()
-        
-        fig_m = go.Figure(go.Bar(
-            x=monthly_trend["month_name"], y=monthly_trend["count"],
-            marker_color=C["a2"], opacity=0.85,
-            hovertemplate="<b>Bulan %{x}</b><br>Total: %{y:,} ulasan<extra></extra>"
-        ))
-        fig_m.update_layout(**layout(title="Agregat Volume Ulasan per Bulan (Seasonality)", yaxis=dict(gridcolor=C["grid"])))
-        st.plotly_chart(fig_m, use_container_width=True, key="monthly_season_chart")
-
-    with col_d:
-        day_labels = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
-        daily_trend = df.groupby("dayofweek").agg(count=("rating", "count")).reset_index()
-        daily_trend["day_name"] = daily_trend["dayofweek"].map(lambda x: day_labels[x])
-
-        fig_d = go.Figure(go.Bar(
-            x=daily_trend["day_name"], y=daily_trend["count"],
-            marker_color=C["a5"], opacity=0.85,
-            hovertemplate="<b>Hari %{x}</b><br>Total: %{y:,} ulasan<extra></extra>"
-        ))
-        fig_d.update_layout(**layout(title="Aktivitas Ulasan Berdasarkan Hari", yaxis=dict(gridcolor=C["grid"])))
-        st.plotly_chart(fig_d, use_container_width=True, key="daily_season_chart")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  PAGE: MODEL NCF
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Model NCF":
-    section("Evaluasi Arsitektur NCF Model", "📐")
-    
-    st.info("💡 Bagian ini menampilkan visualisasi metrik performa model Capstone Project Neural Collaborative Filtering (GMF + MLP layers).")
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("📉 Final Training Loss", "0.2144")
-    c2.metric("🎯 HR@10 (Hit Rate)", "0.7842")
-    c3.metric("📊 NDCG@10", "0.5218")
 
-    # Dummy metric logs untuk plot
-    epochs = list(range(1, 11))
-    train_loss = [0.682, 0.512, 0.401, 0.334, 0.291, 0.262, 0.244, 0.231, 0.220, 0.214]
-    hr10 = [0.552, 0.614, 0.672, 0.701, 0.728, 0.745, 0.761, 0.772, 0.780, 0.784]
+    # ── Arsitektur card ───────────────────────────────────────────────────────
+    section("Arsitektur Model", "🧠")
+    st.markdown("""
+    <div style='background:#0d1220;border:1px solid #1e2a3f;border-radius:14px;padding:24px 28px'>
+    <div style='font-family:Syne,sans-serif;font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:16px'>
+    Neural Collaborative Filtering (NCF)</div>
+    <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px'>
+        <div style='background:#111827;border:1px solid #1e2a3f;border-radius:10px;padding:14px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace;margin-bottom:6px'>INPUT</div>
+            <div style='font-size:14px;color:#e2e8f7'>User ID <span style='color:#38bdf8'>→</span> Embedding (32)</div>
+            <div style='font-size:14px;color:#e2e8f7;margin-top:4px'>Product ID <span style='color:#38bdf8'>→</span> Embedding (32)</div>
+        </div>
+        <div style='background:#111827;border:1px solid #1e2a3f;border-radius:10px;padding:14px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace;margin-bottom:6px'>HIDDEN LAYERS</div>
+            <div style='font-size:14px;color:#818cf8'>Jalur 1: Concatenate → Dense(64→32→16)</div>
+            <div style='font-size:14px;color:#34d399;margin-top:4px'>Jalur 2: Element-wise × (Custom Layer)</div>
+        </div>
+        <div style='background:#111827;border:1px solid #1e2a3f;border-radius:10px;padding:14px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace;margin-bottom:6px'>OUTPUT</div>
+            <div style='font-size:14px;color:#e2e8f7'>Sigmoid → [0,1]</div>
+            <div style='font-size:14px;color:#e2e8f7;margin-top:4px'>Invers Scaler → [1,5] ★</div>
+        </div>
+    </div>
+    <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:12px'>
+        <div style='text-align:center;padding:10px;background:#111827;border-radius:8px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace'>OPTIMIZER</div>
+            <div style='color:#38bdf8;font-weight:600'>Adam</div>
+        </div>
+        <div style='text-align:center;padding:10px;background:#111827;border-radius:8px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace'>LOSS</div>
+            <div style='color:#818cf8;font-weight:600'>Custom RMSE</div>
+        </div>
+        <div style='text-align:center;padding:10px;background:#111827;border-radius:8px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace'>EMBEDDING DIM</div>
+            <div style='color:#34d399;font-weight:600'>32</div>
+        </div>
+        <div style='text-align:center;padding:10px;background:#111827;border-radius:8px'>
+            <div style='font-size:11px;color:#5a6a8a;font-family:DM Mono,monospace'>DROPOUT</div>
+            <div style='color:#fb923c;font-weight:600'>0.5</div>
+        </div>
+    </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        fig_loss = go.Figure(go.Scatter(x=epochs, y=train_loss, mode="lines+markers", line=dict(color=C["danger"], width=2.5)))
-        fig_loss.update_layout(**layout(title="Training Loss Convergence Curve", xaxis=dict(title="Epoch", tickmode="linear"), yaxis=dict(gridcolor=C["grid"])))
-        st.plotly_chart(fig_loss, use_container_width=True, key="model_loss_curve")
-        
-    with col_l2:
-        fig_hr = go.Figure(go.Scatter(x=epochs, y=hr10, mode="lines+markers", line=dict(color=C["a3"], width=2.5)))
-        fig_hr.update_layout(**layout(title="Hit Rate @10 Validation Progress", xaxis=dict(title="Epoch", tickmode="linear"), yaxis=dict(gridcolor=C["grid"])))
-        st.plotly_chart(fig_hr, use_container_width=True, key="model_hr_curve")
+    # ── Data split info ────────────────────────────────────────────────────────
+    section("Informasi Data Training", "📊")
+    n_total = 155938
+    n_train = int(n_total * 0.8)
+    n_test  = n_total - n_train
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Sampel (Cleaned)", f"{n_total:,}")
+    c2.metric("Training Set (80%)",      f"{n_train:,}")
+    c3.metric("Test Set (20%)",          f"{n_test:,}")
+    c4.metric("Sparsity Matrix",         "99.98%")
+
+    # ── Cleaned vs Raw comparison ─────────────────────────────────────────────
+    section("Distribusi: Data Mentah vs Cleaned (Scaled)", "⚖️")
+    col_r, col_c = st.columns(2)
+
+    with col_r:
+        raw_dist = df_raw["rating"].value_counts().sort_index()
+        fig = go.Figure(go.Bar(
+            x=[f"{'★'*int(r)} ({int(r)})" for r in raw_dist.index],
+            y=raw_dist.values,
+            marker=dict(
+                color=list(RATING_COLORS.values()),
+                line=dict(width=0),
+            ),
+            text=[f"{v:,}" for v in raw_dist.values],
+            textposition="outside",
+            textfont=dict(color=C["muted"]),
+            hovertemplate="<b>%{x}</b><br>%{y:,} ulasan<extra></extra>",
+        ))
+        fig.update_layout(
+            **layout(
+            title="Distribusi Rating — Data Mentah (1–5)",
+
+            yaxis=dict(
+                gridcolor=C["grid"]
+            ),
+
+            xaxis=dict(
+                gridcolor="rgba(0,0,0,0)"
+            ),
+        )
+    )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col_c:
+        # Cleaned data scaled 0-1
+        dfc = pd.read_csv(
+            next(p for p in [
+                Path("data/cleaned_sample_data_scaled.csv"),
+                Path("../data/cleaned_sample_data_scaled.csv"),
+            ] if p.exists()),
+        )
+        fig = px.histogram(
+            dfc, x="rating", nbins=40,
+            color_discrete_sequence=[C["a2"]],
+            labels={"rating": "Rating (Scaled 0–1)", "count": "Frekuensi"},
+            title="Distribusi Rating — Cleaned & Scaled (0–1)",
+        )
+        fig.update_traces(marker_line_width=0, opacity=0.85)
+        fig.update_layout(**layout())
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── Simulasi prediksi ─────────────────────────────────────────────────────
+    section("Simulasi Rekomendasi via API", "🔌")
+
+    st.markdown(
+        "<div style='background:#0d1220;border:1px solid #1e2a3f;border-left:3px solid #38bdf8;"
+        "border-radius:0 12px 12px 0;padding:14px 18px;font-size:13px;color:#8898b8;"
+        "font-family:DM Mono,monospace;margin-bottom:20px'>"
+        "Pastikan API sudah berjalan pada <b style='color:#38bdf8'>http://localhost:8000</b> "
+        "sebelum menggunakan fitur ini.<br>"
+        "Jalankan: <b style='color:#34d399'>uvicorn app:app --reload</b> dari folder <code>api/</code>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    col_form, col_res = st.columns([1, 2])
+
+    # =========================
+    # FORM INPUT
+    # =========================
+    with col_form:
+
+        sample_users = (
+            df_raw["user_id"]
+            .value_counts()
+            .head(20)
+            .index
+            .tolist()
+        )
+
+        sel_user = st.selectbox(
+            "Pilih User ID",
+            sample_users,
+            key="recommend_user_select"
+        )
+
+        top_k_sim = st.slider(
+            "Top K Rekomendasi",
+            3,
+            20,
+            10,
+            key="top_k_slider"
+        )
+
+        min_r_sim = st.slider(
+            "Min Rating Filter",
+            1.0,
+            5.0,
+            3.0,
+            0.5,
+            key="min_rating_slider"
+        )
+
+        if st.button(
+            "🚀 Minta Rekomendasi",
+            use_container_width=True,
+            key="recommend_button"
+        ):
+
+            try:
+                import requests
+
+                resp = requests.post(
+                    "http://localhost:8000/recommend",
+                    json={
+                        "user_id": sel_user,
+                        "top_k": top_k_sim,
+                        "min_rating": min_r_sim
+                    },
+                    timeout=30,
+                )
+
+                if resp.status_code == 200:
+                    st.session_state["api_result"] = resp.json()
+
+                else:
+                    st.session_state["api_result"] = {
+                        "error": resp.text
+                    }
+
+            except Exception as e:
+                st.session_state["api_result"] = {
+                    "error": str(e)
+                }
+
+    # =========================
+    # HASIL REKOMENDASI
+    # =========================
+    with col_res:
+
+        if "api_result" not in st.session_state:
+
+            st.info(
+                "Silakan pilih user lalu klik tombol rekomendasi."
+            )
+
+        else:
+
+            result = st.session_state["api_result"]
+
+            if "error" in result:
+
+                st.error(
+                    f"❌ API Error: {result['error']}"
+                )
+
+            else:
+
+                recs = result.get(
+                    "recommendations",
+                    []
+                )
+
+                if recs:
+
+                    rec_df = pd.DataFrame(recs)
+
+                    fig = go.Figure(
+                        go.Bar(
+                            x=rec_df["predicted_rating"],
+                            y=rec_df["product_id"],
+                            orientation="h",
+                            marker=dict(
+                                color=rec_df["predicted_rating"],
+                                colorscale=[
+                                    [0, C["danger"]],
+                                    [0.5, C["a6"]],
+                                    [1, C["a1"]]
+                                ],
+                                cmin=1,
+                                cmax=5,
+                                line=dict(width=0),
+                            ),
+                            text=rec_df["predicted_rating"].map(
+                                lambda x: f"★ {x:.3f}"
+                            ),
+                            textposition="outside",
+                            textfont=dict(color=C["muted"]),
+                        )
+                    )
+
+                    fig.update_layout(
+                        **layout(
+                            title=f"Rekomendasi untuk {sel_user}",
+                            height=max(300, len(recs) * 36),
+
+                            xaxis=dict(
+                            range=[1, 5.5],
+                            gridcolor=C["grid"]
+                            ),
+
+                            yaxis=dict(
+                            autorange="reversed",
+                            gridcolor="rgba(0,0,0,0)"
+                            ),
+                        )
+                    )
+
+            st.plotly_chart(
+            fig,
+            use_container_width=True,
+            key="rekomendasi_chart"
+        )
+
+    # ── Data Mentah ────────────────────────────────────────────────────────────
+    section("Preview Data Cleaned", "📋")
+
+    try:
+
+        dfc_preview = dfc.head(100).copy()
+
+        dfc_preview["rating_bintang"] = (
+            dfc_preview["rating"] * 4 + 1
+        ).round(2)
+
+        with st.expander(
+            "Lihat 100 baris pertama data cleaned_sample_data_scaled.csv",
+            expanded=False
+        ):
+
+            st.dataframe(
+                dfc_preview,
+                use_container_width=True,
+                height=300
+            )
+
+    except Exception:
+
+        st.info(
+            "File `cleaned_sample_data_scaled.csv` tidak ditemukan."
+        )
+# ══════════════════════════════════════════════════════════════════════════════
+#  FOOTER
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("<br><hr>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align:center;color:#2a3a55;font-size:12px;"
+    "font-family:DM Mono,monospace;padding:8px 0'>"
+    "NCF Analytics Dashboard &nbsp;·&nbsp; Capstone CC26-PRU466 "
+    "&nbsp;·&nbsp; Neural Collaborative Filtering E-Commerce"
+    "</div>",
+    unsafe_allow_html=True
+)
